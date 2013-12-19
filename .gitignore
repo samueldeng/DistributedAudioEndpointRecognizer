@@ -9,3 +9,8 @@ target/
 
 # text editor temp file #
 *.swp
+
+# Eclipse
+.classpath
+.project
+.settings/
