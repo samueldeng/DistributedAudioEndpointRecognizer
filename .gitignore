@@ -1,11 +1,11 @@
-*.class
-
-# Package Files #
-*.jar
-*.war
-*.ear
-
-# maven target directory#
+# maven target directory #
 target/
 
+# intelliJ idea project file #
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# text editor temp file #
 *.swp
