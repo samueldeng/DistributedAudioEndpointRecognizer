@@ -5,10 +5,7 @@
 *.war
 *.ear
 
-#
-.project
-lib/
-classes/
+# maven target directory#
 target/
 
 *.swp
