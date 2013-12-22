@@ -2,35 +2,44 @@ package cn.xjtu;
 
 import backtype.storm.Config;
 import backtype.storm.LocalCluster;
+import backtype.storm.LocalDRPC;
 import backtype.storm.StormSubmitter;
-import backtype.storm.topology.TopologyBuilder;
-import backtype.storm.utils.Utils;
+import backtype.storm.drpc.LinearDRPCTopologyBuilder;
 
 /**
  * Created by samuel on 12/19/13.
  */
 public class DistributedAudioEndpointRecognizer {
     public static void main(String[] args) {
-        TopologyBuilder builder = new TopologyBuilder();
 
-        builder.setSpout("WaveSegmentSpout", new WaveSegmentSpout(), 1);
-        builder.setBolt("BasicSegmentProcessBolt",
-                new BasicSegmentProcessBolt(), 5).shuffleGrouping(
-                "WaveSegmentSpout");
+        // create the DRPC topology.
+        // TODO this method seems to be deprecated, using the trident api to upgrade it.
+        // FIXME filedsgroup.............
+        LinearDRPCTopologyBuilder builder = new LinearDRPCTopologyBuilder("EPRecog");
+        builder.addBolt(new SegmentSplitWithFormatParser(), 5);
+        builder.addBolt(new SegmentAnalyzer(), 19);
+        builder.addBolt(new ReportSummary(), 5);
+
+        // create the configuration.
         Config conf = new Config();
-        conf.put("wavFile", "http://192.168.56.1/11k16bitpcm_5min.wav");
         conf.setDebug(true);
+
+        // starting running on local or cluster.
         try {
-            //Cluster mode: use the args[0] to be the topology name.
-            if (args != null && args.length > 0) {
-                conf.setNumWorkers(3);
-                StormSubmitter.submitTopology(args[0], conf, builder.createTopology());
-            } else {
+            if (args == null || args.length == 0) {
+                LocalDRPC drpc = new LocalDRPC();
                 LocalCluster cluster = new LocalCluster();
-                cluster.submitTopology("EndpointRecoginizer", conf, builder.createTopology());
-                Utils.sleep(1000);
-                cluster.killTopology("EndpointRecoginizer");
+
+                cluster.submitTopology("EPRecog-drpc", conf, builder.createLocalTopology(drpc));
+                String[] urlToTry = new String[]{ "http://192.168.56.1/11k16bitpcm_5min.wav", "http://192.168.56.1/11k16bitpcm_5min.wav"};
+                for (String url : urlToTry){
+                    System.out.println(drpc.execute("EPRecog", url));
+                }
                 cluster.shutdown();
+                drpc.shutdown();
+            } else {
+                conf.setNumWorkers(6);
+                StormSubmitter.submitTopology(args[0], conf, builder.createRemoteTopology());
             }
         } catch (Exception e){
             e.printStackTrace();
