@@ -1,8 +1,5 @@
 package cn.xjtu;
 
-import java.util.ArrayList;
-import java.util.Map;
-
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.OutputFieldsDeclarer;
@@ -10,6 +7,9 @@ import backtype.storm.topology.base.BaseRichBolt;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
+
+import java.util.ArrayList;
+import java.util.Map;
 
 /**
  * Created by samuel on 12/19/13.
@@ -67,10 +67,8 @@ public class BasicSegmentProcessBolt extends BaseRichBolt {
      * read <tt>audioBytes</tt> into frame according to the sapmleSizeinFram,
      * Big Endian and isPCM_SIGNED
      *
-     * @param audioBytes
-     * the raw byte filled with the audio data.
-     * @param frameDataList
-     * the frameDataList filled the quantized value.
+     * @param audioBytes    the raw byte filled with the audio data.
+     * @param frameDataList the frameDataList filled the quantized value.
      */
     private void readAudioByte(byte[] audioBytes,
                                ArrayList<Integer> frameDataList) {
@@ -114,10 +112,8 @@ public class BasicSegmentProcessBolt extends BaseRichBolt {
      * normalize <tt>frameDataList</tt> and put all normalized value to
      * <tt>norDataList</tt>
      *
-     * @param frameDataList
-     * The source frameDataList with raw value
-     * @param norDataList
-     * The destination.
+     * @param frameDataList The source frameDataList with raw value
+     * @param norDataList   The destination.
      */
     private void normalizer(ArrayList<Integer> frameDataList,
                             ArrayList<Float> norDataList) {
@@ -143,8 +139,7 @@ public class BasicSegmentProcessBolt extends BaseRichBolt {
     /**
      * convert <tt>frameIndex</tt> into timePoint.
      *
-     * @param frameIndex
-     * count in Frame.
+     * @param frameIndex count in Frame.
      * @return timePoint count in seconds.
      */
     private String conToTimePoint(long frameIndex) {

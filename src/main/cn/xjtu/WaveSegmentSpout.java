@@ -1,20 +1,17 @@
 package cn.xjtu;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.util.Map;
-
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-
 import backtype.storm.spout.SpoutOutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.topology.base.BaseRichSpout;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Values;
+
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import java.net.URL;
+import java.util.Map;
 
 /**
  * Created by samuel on 12/19/13.
@@ -38,13 +35,10 @@ public class WaveSegmentSpout extends BaseRichSpout {
                      SpoutOutputCollector collector) {
         try {
             this.collector = collector;
-            File wavFile = new File(conf.get("wavFile").toString());
-            FileInputStream fis = new FileInputStream(wavFile);
-            byte[] arrFile = new byte[(int) wavFile.length()];
-            fis.read(arrFile);
-            ByteArrayInputStream bis = new ByteArrayInputStream(arrFile);
-            audioInputStream = AudioSystem.getAudioInputStream(bis);
 
+            URL url = new URL((String) conf.get("wavFile"));
+            audioInputStream = AudioSystem.getAudioInputStream(url);
+            System.out.println("DEBUG  " + Thread.currentThread().getName());
             AudioFormat format = audioInputStream.getFormat();
             frameLength = audioInputStream.getFrameLength();
             frameSize = format.getFrameSize();
@@ -53,7 +47,6 @@ public class WaveSegmentSpout extends BaseRichSpout {
             frameRate = format.getFrameRate();
             isPCM_SIGNED = format.getEncoding().toString()
                     .startsWith("PCM_SIGN");
-            fis.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
