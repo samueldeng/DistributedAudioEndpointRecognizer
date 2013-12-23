@@ -17,8 +17,7 @@ public class DistributedAudioEndpointRecognizer {
         // FIXME filedsgroup.............
         LinearDRPCTopologyBuilder builder = new LinearDRPCTopologyBuilder("EPRecog");
         builder.addBolt(new SegmentSplitWithFormatParser(), 5);
-        builder.addBolt(new SegmentAnalyzer(), 19);
-        builder.addBolt(new ReportSummary(), 5);
+        builder.addBolt(new SegmentAnalyzer(), 19).shuffleGrouping();
 
         // create the configuration.
         Config conf = new Config();
@@ -31,9 +30,9 @@ public class DistributedAudioEndpointRecognizer {
                 LocalCluster cluster = new LocalCluster();
 
                 cluster.submitTopology("EPRecog-drpc", conf, builder.createLocalTopology(drpc));
-                String[] urlToTry = new String[]{ "http://192.168.56.1/11k16bitpcm_5min.wav", "http://192.168.56.1/11k16bitpcm_5min.wav"};
+                String[] urlToTry = new String[]{ "http://192.168.56.1/11k16bitpcm_5min.wav"};
                 for (String url : urlToTry){
-                    System.out.println(drpc.execute("EPRecog", url));
+                    System.out.println("DEBUG_INFO" + drpc.execute("EPRecog", url));
                 }
                 cluster.shutdown();
                 drpc.shutdown();

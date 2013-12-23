@@ -19,10 +19,14 @@ public class SegmentSplitWithFormatParser extends BaseBasicBolt {
 
     private static final int SEGMENTSIZETHREASHOLD = 1024 * 1024;
 
+    private Object id;
+    private String wavURL;
+
+
     @Override
     public void execute(Tuple tuple, BasicOutputCollector collector) {
-        Object id = tuple.getValue(0);
-        String wavURL = tuple.getString(1);
+        id = tuple.getValue(0);
+        wavURL = tuple.getString(1);
 
         try {
             URL _wavURL = new URL(wavURL);
@@ -47,6 +51,7 @@ public class SegmentSplitWithFormatParser extends BaseBasicBolt {
                 System.arraycopy(tempAudioBytes, 0, nextAudioBytes, 0, sizeRead);
                 collector.emit(
                         new Values(
+                                id,
                                 nextAudioBytes,
                                 segmentIndex,
                                 sampleSizeInBits,
@@ -66,6 +71,7 @@ public class SegmentSplitWithFormatParser extends BaseBasicBolt {
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(
                 new Fields(
+                        "id",
                         "audioBytes",
                         "segmentIndex",
                         "sampleSizeInBits",
