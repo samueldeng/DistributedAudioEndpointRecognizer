@@ -17,6 +17,6 @@ first, generate the jar and send it to a host where there are storm installed.
 
 second, on a storm host, just execute this command to submit the topology.
 
-	$ storm jar *.jar  cn.xjtu.DistributedAudioEndpointRecognizer
+	$ storm jar *.jar cn.xjtu.DistributedAudioEndpointRecognizer dis1
 
 ## More function are comming.

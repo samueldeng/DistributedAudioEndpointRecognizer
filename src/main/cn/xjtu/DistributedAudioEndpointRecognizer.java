@@ -5,6 +5,7 @@ import backtype.storm.LocalCluster;
 import backtype.storm.LocalDRPC;
 import backtype.storm.StormSubmitter;
 import backtype.storm.drpc.LinearDRPCTopologyBuilder;
+import backtype.storm.tuple.Fields;
 
 /**
  * Created by samuel on 12/19/13.
@@ -18,6 +19,7 @@ public class DistributedAudioEndpointRecognizer {
         LinearDRPCTopologyBuilder builder = new LinearDRPCTopologyBuilder("EPRecog");
         builder.addBolt(new SegmentSplitWithFormatParser(), 5);
         builder.addBolt(new SegmentAnalyzer(), 19).shuffleGrouping();
+        builder.addBolt(new ResultsFormatter(), 5).fieldsGrouping(new Fields("id"));
 
         // create the configuration.
         Config conf = new Config();
