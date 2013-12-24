@@ -1,20 +1,18 @@
 package cn.xjtu;
 
-import backtype.storm.task.OutputCollector;
-import backtype.storm.task.TopologyContext;
+import backtype.storm.topology.BasicOutputCollector;
 import backtype.storm.topology.OutputFieldsDeclarer;
-import backtype.storm.topology.base.BaseRichBolt;
+import backtype.storm.topology.base.BaseBasicBolt;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
 import java.util.ArrayList;
-import java.util.Map;
 
 /**
- * Created by samuel on 12/19/13.
+ * Created by samuel on 12/22/13.
  */
-public class BasicSegmentProcessBolt extends BaseRichBolt {
+public class SegmentAnalyzer extends BaseBasicBolt {
 
     private static final Float MAXVALUE16bitSIGNED = (float) 32768;
     private static final Float MAXVALUE8bitSIGNED = (float) 128;
@@ -22,56 +20,44 @@ public class BasicSegmentProcessBolt extends BaseRichBolt {
     private static final double AMPTI_THREASHOLD = 0.05;
     private static final int LENGTH_THREASHOLD = 2500;
 
-    long segmentIndex;
-    int sampleSizeInBits;
-    boolean isBigEndian;
-    float frameRate;
-    boolean isPCM_SIGNED;
-
-    OutputCollector collector;
-
-    @Override
-    public void prepare(Map stormConf, TopologyContext context,
-                        OutputCollector collector) {
-        this.collector = collector;
-    }
+    private Object id;
+    private Long segmentIndex;
+    private Integer sampleSizeInBits;
+    private Boolean isBigEndian;
+    private Float frameRate;
+    private Boolean isPCM_SIGNED;
+    private byte[] audioBytes;
 
     @Override
-    public void execute(Tuple input) {
-        byte[] audioBytes;
+    public void execute(Tuple tuple, BasicOutputCollector collector) {
+
+        // Parse the tuple from the SegmentSplitWithFormatParser.
+        id = tuple.getValue(0);
+        segmentIndex = tuple.getLongByField("segmentIndex");
+        sampleSizeInBits = tuple.getIntegerByField("sampleSizeInBits");
+        isBigEndian = tuple.getBooleanByField("isBigEndian");
+        frameRate = tuple.getFloatByField("frameRate");
+        isPCM_SIGNED = tuple.getBooleanByField("isPCM_SIGNED");
+        audioBytes = tuple.getBinaryByField("audioBytes");
+
+
         ArrayList<Integer> frameDataList = new ArrayList<Integer>();
-        ArrayList<Float> normalizedValue = new ArrayList<Float>();
-        ArrayList<String> silencePoint = new ArrayList<String>();
-
-        // Parse the tuple from the WaveSegmentSpout.
-        segmentIndex = input.getLongByField("segmentIndex");
-        sampleSizeInBits = input.getIntegerByField("sampleSizeInBits");
-        isBigEndian = input.getBooleanByField("isBigEndian");
-        frameRate = input.getFloatByField("frameRate");
-        isPCM_SIGNED = input.getBooleanByField("isPCM_SIGNED");
-        audioBytes = input.getBinaryByField("audioBytes");
+        ArrayList<Float> normalizedValues = new ArrayList<Float>();
+        ArrayList<String> silencePoints = new ArrayList<String>();
 
         readAudioByte(audioBytes, frameDataList);
-        normalizer(frameDataList, normalizedValue);
-        basicSilenceFinder(normalizedValue, silencePoint);
-        for (String aSilencePoint : silencePoint)
-            collector.emit(new Values(aSilencePoint));
+        normalizer(frameDataList, normalizedValues);
+        basicSilenceFinder(normalizedValues, silencePoints);
+        for (String point : silencePoints)
+            collector.emit(new Values(id, point));
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("silencePoint"));
+        declarer.declare(new Fields("id", "silencePoint"));
     }
 
-    /**
-     * read <tt>audioBytes</tt> into frame according to the sapmleSizeinFram,
-     * Big Endian and isPCM_SIGNED
-     *
-     * @param audioBytes    the raw byte filled with the audio data.
-     * @param frameDataList the frameDataList filled the quantized value.
-     */
-    private void readAudioByte(byte[] audioBytes,
-                               ArrayList<Integer> frameDataList) {
+    private void readAudioByte(byte[] audioBytes, ArrayList<Integer> frameDataList) {
         if (sampleSizeInBits == 16) {
             if (isBigEndian) {
                 for (int i = 0; i < audioBytes.length / 2; i++) {
@@ -115,23 +101,19 @@ public class BasicSegmentProcessBolt extends BaseRichBolt {
      * @param frameDataList The source frameDataList with raw value
      * @param norDataList   The destination.
      */
-    private void normalizer(ArrayList<Integer> frameDataList,
-                            ArrayList<Float> norDataList) {
+    private void normalizer(ArrayList<Integer> frameDataList, ArrayList<Float> norDataList) {
         if (sampleSizeInBits == 16) {
             // sampleSizeInBits is 16, default is signed.
-            for (int i = 0; i < frameDataList.size(); i++) {
-                norDataList.add(new Float(frameDataList.get(i))
-                        / MAXVALUE16bitSIGNED);
+            for (Integer aFrameDataList : frameDataList) {
+                norDataList.add((float) aFrameDataList / MAXVALUE16bitSIGNED);
             }
         } else if (sampleSizeInBits == 8 && isPCM_SIGNED) {
-            for (int i = 0; i < frameDataList.size(); i++) {
-                norDataList.add(new Float(frameDataList.get(i))
-                        / MAXVALUE8bitSIGNED);
+            for (Integer frameData : frameDataList) {
+                norDataList.add((float) frameData / MAXVALUE8bitSIGNED);
             }
         } else {
-            for (int i = 0; i < frameDataList.size(); i++) {
-                norDataList.add(new Float(frameDataList.get(i))
-                        / MAXVALUE8bitUNSIGNED);
+            for (Integer frameData : frameDataList) {
+                norDataList.add((float) frameData / MAXVALUE8bitUNSIGNED);
             }
         }
     }
@@ -149,18 +131,17 @@ public class BasicSegmentProcessBolt extends BaseRichBolt {
     }
 
     /**
-     * @param norValue
-     * @param silencePoint
+     * @param norValues the normalized value data list.
+     * @param silencePoint the output silence point list.
      */
-    private void basicSilenceFinder(ArrayList<Float> norValue,
-                                    ArrayList<String> silencePoint) {
-        long advancePtr = 0, delayPtr = 0;
-        for (advancePtr = 0, delayPtr = 0; (delayPtr < norValue.size())
-                && (advancePtr < norValue.size()); advancePtr++, delayPtr++) {
+    private void basicSilenceFinder(ArrayList<Float> norValues, ArrayList<String> silencePoint) {
+        long advancePtr, delayPtr;
+        for (advancePtr = 0, delayPtr = 0; (delayPtr < norValues.size())
+                && (advancePtr < norValues.size()); advancePtr++, delayPtr++) {
             // TODO The transform from long to integer will cause some trouble.
-            if (Math.abs(norValue.get((int) advancePtr)) < AMPTI_THREASHOLD) {
-                for (; advancePtr < norValue.size(); advancePtr++) {
-                    if (Math.abs(norValue.get((int) advancePtr)) > AMPTI_THREASHOLD) {
+            if (Math.abs(norValues.get((int) advancePtr)) < AMPTI_THREASHOLD) {
+                for (; advancePtr < norValues.size(); advancePtr++) {
+                    if (Math.abs(norValues.get((int) advancePtr)) > AMPTI_THREASHOLD) {
                         if (advancePtr - delayPtr < LENGTH_THREASHOLD) {
                             break;
                         }
