@@ -38,7 +38,7 @@ public class ResultsFormatter extends BaseBatchBolt {
     public void finishBatch() {
         String emit = null;
         for (String endPoint : endPoints) {
-            emit += endPoint;
+            emit += endPoint + "\n";
         }
         collector.emit(new Values(id, emit));
     }

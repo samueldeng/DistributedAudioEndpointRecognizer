@@ -15,7 +15,6 @@ public class DistributedAudioEndpointRecognizer {
 
         // create the DRPC topology.
         // TODO this method seems to be deprecated, using the trident api to upgrade it.
-        // FIXME filedsgroup.............
         LinearDRPCTopologyBuilder builder = new LinearDRPCTopologyBuilder("EPRecog");
         builder.addBolt(new SegmentSplitWithFormatParser(), 5);
         builder.addBolt(new SegmentAnalyzer(), 19).shuffleGrouping();
